@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # CyberShield APK Security Scanner
 
 CyberShield is an advanced APK security scanner designed to detect fake banking applications and analyze Android APK files for malicious behavior. The system provides comprehensive security analysis including permission analysis, threat intelligence, and machine learning-based detection.
