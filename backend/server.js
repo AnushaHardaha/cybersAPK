@@ -6,6 +6,7 @@ const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('rate-limiter-flexible');
 const winston = require('winston');
+const { v4: uuidv4 } = require('uuid'); // Import uuid
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 // Import custom modules
@@ -62,7 +63,7 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 220 * 1024 * 1024, // 100MB
+    fileSize: 220 * 1024 * 1024, // 220MB
     files: 1
   },
   fileFilter: (req, file, cb) => {
@@ -107,18 +108,17 @@ const rateLimitMiddleware = async (req, res, next) => {
 };
 
 // Main APK scanning endpoint
-// Test APK
-const APK = "./uploads/1756310840942-391671009.apk";
 app.post('/api/scan-apk', rateLimitMiddleware, upload.single('apk'), async (req, res) => {
-  const scanId = require('uuid').v4();
+  const scanId = uuidv4();
   let filePath = null;
+  
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'No APK file provided' });
+      return res.status(400).json({ success: false, error: 'No APK file provided' });
     }
     
-    filePath = req.file.path  || APK;
-    const filename = req.file.originalname || (APK && path.basename(APK));
+    filePath = req.file.path;
+    const filename = req.file.originalname;
     logger.info(`Starting APK scan - ID: ${scanId}, File: ${filename}`);
     
     // Initialize scan result
@@ -142,7 +142,6 @@ app.post('/api/scan-apk', rateLimitMiddleware, upload.single('apk'), async (req,
     // Step 2: Security Scanning
     logger.info(`${scanId}: Starting security scan`);
     const securityResults = await securityScanner.scanAPK(filePath, apkInfo);
-
     scanResult.analysis.security = securityResults;
     
     // Step 3: Banking App Detection
@@ -170,11 +169,9 @@ app.post('/api/scan-apk', rateLimitMiddleware, upload.single('apk'), async (req,
     scanResult.threats = riskAssessment.threats;
     scanResult.recommendations = riskAssessment.recommendations;
     
-    // Cleanup
-    await fs.unlink(filePath);
-    
     logger.info(`${scanId}: Scan completed - Risk: ${scanResult.riskLevel}, Fake: ${scanResult.isFake}`);
     
+    // The response has been moved before cleanup to avoid race conditions
     res.json({
       success: true,
       scanId,
@@ -185,49 +182,32 @@ app.post('/api/scan-apk', rateLimitMiddleware, upload.single('apk'), async (req,
         threats: scanResult.threats,
         recommendations: scanResult.recommendations,
         summary: generateScanSummary(scanResult)
-      },
-      metadata: {
-        apkInfo,
-        securityResults,
-        threatResults,
-        timestamp: new Date()
       }
     });
     
   } catch (error) {
-    logger.error(`${scanId}: Scan failed:`, error);
+    logger.error(`${scanId}: Scan failed: ${error.message}`, { stack: error.stack });
     
-    // Cleanup on error
+    // Ensure a response is only sent if one hasn't been sent already
+    if (!res.headersSent) {
+      return res.status(500).json({
+        success: false,
+        scanId,
+        error: 'Scan failed',
+        message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      });
+    }
+  } finally {
+    // Cleanup the uploaded file in a finally block to ensure it always runs
     if (filePath) {
       try {
         await fs.unlink(filePath);
       } catch (cleanupError) {
-        logger.error('Failed to cleanup file:', cleanupError);
+        logger.error(`Failed to cleanup file ${filePath}:`, cleanupError);
       }
     }
-    
-    res.status(500).json({
-      success: false,
-      scanId,
-      error: 'Scan failed',
-      message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-    });
   }
 });
-
-// // Get scan result endpoint
-// app.get('/api/scan/:scanId', async (req, res) => {
-//   try {
-//     const result = await dbService.getScanResult(req.params.scanId);
-//     if (!result) {
-//       return res.status(404).json({ error: 'Scan not found' });
-//     }
-//     res.json(result);
-//   } catch (error) {
-//     logger.error('Failed to retrieve scan result:', error);
-//     res.status(500).json({ error: 'Failed to retrieve scan result' });
-//   }
-// });
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -235,7 +215,6 @@ app.get('/api/health', (req, res) => {
     status: 'healthy',
     timestamp: new Date(),
     services: {
-    //   database: dbService ? 'connected' : 'disconnected',
       threatIntel: threatIntel ? 'initialized' : 'not initialized'
     }
   });
@@ -243,96 +222,96 @@ app.get('/api/health', (req, res) => {
 
 // Risk calculation function
 function calculateRiskLevel(scanResult) {
-  const { basic, security, banking, threats, ml } = scanResult.analysis;
-  let riskScore = 0;
-  let confidence = 0;
-  let detectedThreats = [];
-  let recommendations = [];
-  
-  // Basic APK analysis scoring
-  if (basic.isDebuggable) riskScore += 10;
-  if (basic.allowBackup) riskScore += 5;
-  if (basic.hasNativeCode) riskScore += 5;
-  
-  // Security analysis scoring
-  if (security.maliciousPermissions > 0) riskScore += security.maliciousPermissions * 15;
-  if (security.suspiciousStrings > 0) riskScore += security.suspiciousStrings * 10;
-  if (security.obfuscated) riskScore += 20;
-  if (security.packedExecutables > 0) riskScore += security.packedExecutables * 25;
-  
-  // Banking characteristics scoring
-  if (banking.imitatesBankingApp) {
-    riskScore += 50;
-    detectedThreats.push('Banking app impersonation detected');
-  }
-  if (banking.hasPhishingIndicators) {
-    riskScore += 40;
-    detectedThreats.push('Phishing indicators found');
-  }
-  if (banking.suspiciousNetworking) {
-    riskScore += 30;
-    detectedThreats.push('Suspicious network behavior');
-  }
-  
-  // Threat intelligence scoring
-  if (threats.knownMalware) {
-    riskScore += 100;
-    detectedThreats.push('Known malware signature detected');
-  }
-  if (threats.suspiciousDomains > 0) {
-    riskScore += threats.suspiciousDomains * 20;
-    detectedThreats.push('Communicates with suspicious domains');
-  }
-  
-  // ML detection scoring (if available)
-  if (ml && ml.malwareProbability > 0.7) {
-    riskScore += ml.malwareProbability * 50;
-    detectedThreats.push('AI-based malware detection triggered');
-  }
-  
-  // Determine risk level and fake status
-  let level, isFake;
-  if (riskScore >= 80) {
-    level = 'critical';
-    isFake = true;
-    confidence = Math.min(95, 70 + riskScore * 0.3);
-  } else if (riskScore >= 50) {
-    level = 'high';
-    isFake = riskScore >= 60;
-    confidence = Math.min(85, 60 + riskScore * 0.4);
-  } else if (riskScore >= 25) {
-    level = 'medium';
-    isFake = false;
-    confidence = Math.min(75, 50 + riskScore * 0.5);
-  } else if (riskScore >= 10) {
-    level = 'low';
-    isFake = false;
-    confidence = Math.min(65, 40 + riskScore * 0.6);
-  } else {
-    level = 'minimal';
-    isFake = false;
-    confidence = Math.min(60, 30 + riskScore);
-  }
-  
-  // Generate recommendations
-  if (isFake) {
-    recommendations.push('DO NOT INSTALL - This appears to be a fake banking application');
-    recommendations.push('Report this APK to your bank and security authorities');
-  }
-  if (security.maliciousPermissions > 0) {
-    recommendations.push('Review app permissions carefully before installation');
-  }
-  if (banking.suspiciousNetworking) {
-    recommendations.push('This app may transmit sensitive data to unauthorized servers');
-  }
-  
-  return {
-    level,
-    isFake,
-    confidence: Math.round(confidence),
-    threats: detectedThreats,
-    recommendations
-  };
+    const { basic, security, banking, threats, ml } = scanResult.analysis;
+    let riskScore = 0;
+    let confidence = 0;
+    let detectedThreats = [];
+    let recommendations = [];
+    
+    // Basic APK analysis scoring
+    if (basic.isDebuggable) riskScore += 10;
+    if (basic.allowBackup) riskScore += 5;
+    if (basic.hasNativeCode) riskScore += 5;
+    
+    // Security analysis scoring
+    if (security.maliciousPermissions > 0) riskScore += security.maliciousPermissions * 15;
+    if (security.suspiciousStrings > 0) riskScore += security.suspiciousStrings * 10;
+    if (security.obfuscated) riskScore += 20;
+    if (security.packedExecutables > 0) riskScore += security.packedExecutables * 25;
+    
+    // Banking characteristics scoring
+    if (banking.imitatesBankingApp) {
+      riskScore += 50;
+      detectedThreats.push('Banking app impersonation detected');
+    }
+    if (banking.hasPhishingIndicators) {
+      riskScore += 40;
+      detectedThreats.push('Phishing indicators found');
+    }
+    if (banking.suspiciousNetworking) {
+      riskScore += 30;
+      detectedThreats.push('Suspicious network behavior');
+    }
+    
+    // Threat intelligence scoring
+    if (threats.knownMalware) {
+      riskScore += 100;
+      detectedThreats.push('Known malware signature detected');
+    }
+    if (threats.suspiciousDomains > 0) {
+      riskScore += threats.suspiciousDomains * 20;
+      detectedThreats.push('Communicates with suspicious domains');
+    }
+    
+    // ML detection scoring (if available)
+    if (ml && ml.malwareProbability > 0.7) {
+      riskScore += ml.malwareProbability * 50;
+      detectedThreats.push('AI-based malware detection triggered');
+    }
+    
+    // Determine risk level and fake status
+    let level, isFake;
+    if (riskScore >= 80) {
+      level = 'critical';
+      isFake = true;
+      confidence = Math.min(95, 70 + riskScore * 0.3);
+    } else if (riskScore >= 50) {
+      level = 'high';
+      isFake = riskScore >= 60;
+      confidence = Math.min(85, 60 + riskScore * 0.4);
+    } else if (riskScore >= 25) {
+      level = 'medium';
+      isFake = false;
+      confidence = Math.min(75, 50 + riskScore * 0.5);
+    } else if (riskScore >= 10) {
+      level = 'low';
+      isFake = false;
+      confidence = Math.min(65, 40 + riskScore * 0.6);
+    } else {
+      level = 'minimal';
+      isFake = false;
+      confidence = Math.min(60, 30 + riskScore);
+    }
+    
+    // Generate recommendations
+    if (isFake) {
+      recommendations.push('DO NOT INSTALL - This appears to be a fake banking application');
+      recommendations.push('Report this APK to your bank and security authorities');
+    }
+    if (security.maliciousPermissions > 0) {
+      recommendations.push('Review app permissions carefully before installation');
+    }
+    if (banking.suspiciousNetworking) {
+      recommendations.push('This app may transmit sensitive data to unauthorized servers');
+    }
+    
+    return {
+      level,
+      isFake,
+      confidence: Math.round(confidence),
+      threats: detectedThreats,
+      recommendations
+    };
 }
 
 function generateScanSummary(scanResult) {
@@ -348,6 +327,9 @@ function generateScanSummary(scanResult) {
 // Error handling middleware
 app.use((error, req, res, next) => {
   logger.error('Unhandled error:', error);
+  if (res.headersSent) {
+    return next(error);
+  }
   res.status(500).json({
     success: false,
     error: 'Internal server error'

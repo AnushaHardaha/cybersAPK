@@ -81,6 +81,7 @@
       padding: 2rem;
       border-radius: 15px;
       box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      display: none; /* Initially hidden */
     }
     .results h2 {
       margin-bottom: 1rem;
@@ -141,69 +142,131 @@
 </head>
 <body>
 
-  <!-- Header -->
   <header>
     <h1>Cryptera APK Detector</h1>
     <p>Detect fake banking apps instantly</p>
   </header>
 
-  <!-- Upload Section -->
   <section class="upload-box">
     <label for="apkUpload" class="upload-label">
       📂 Upload APK File
     </label>
     <input type="file" id="apkUpload" accept=".apk">
-    <p class="hint">Supported file type: .apk (Max size: 50MB)</p>
+    <p class="hint">Supported file type: .apk (Max size: 220MB)</p>
     <button class="scan-btn">🔍 Scan Now</button>
   </section>
 
-  <!-- Results Section -->
   <section class="results">
     <h2>RESULTS</h2>
-    <div class="status suspicious">❌ SUSPICIOUS</div>
+    <div id="status" class="status"></div>
     <div class="progress-bar">
-      <div class="progress" style="width: 82%;"></div>
+      <div id="progress" class="progress"></div>
     </div>
-    <p class="risk-text">82% Suspicious</p>
+    <p id="risk-text" class="risk-text"></p>
 
     <div class="cards">
-      <!-- Metadata -->
       <div class="card">
         <h3>Metadata</h3>
-        <p><b>Package Name:</b> com.sbi.mobilebankingg</p>
-        <p><b>Version:</b> 1.0.3</p>
-        <p><b>Size:</b> 12 MB</p>
+        <p id="metadata"></p>
       </div>
 
-      <!-- Permissions -->
       <div class="card">
-        <h3>Permission Analysis</h3>
-        <ul>
-          <li>✅ INTERNET</li>
-          <li>❌ READ_SMS</li>
-          <li>❌ RECEIVE_BOOT_COMPLETED</li>
-        </ul>
+        <h3>Threats</h3>
+        <ul id="threats"></ul>
       </div>
 
-      <!-- Certificate -->
       <div class="card">
-        <h3>Certificate & Signature</h3>
-        <p>❌ Not signed by official SBI cert</p>
-      </div>
-
-      <!-- ML Prediction -->
-      <div class="card">
-        <h3>ML Prediction</h3>
-        <p><b>Malicious:</b> 87%</p>
-        <p><b>Legit:</b> 13%</p>
+        <h3>Recommendations</h3>
+        <ul id="recommendations"></ul>
       </div>
     </div>
   </section>
 
-  <!-- Footer -->
   <footer>
     <p>Made at National Cryptera Hackathon 2025 🚀 | Team Cryptera</p>
   </footer>
+
+  <script>
+    const apkUpload = document.getElementById('apkUpload');
+    const scanBtn = document.querySelector('.scan-btn');
+    const resultsSection = document.querySelector('.results');
+
+    scanBtn.addEventListener('click', async () => {
+      const file = apkUpload.files[0];
+      if (!file) {
+        alert('Please select an APK file.');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('apk', file);
+
+      try {
+        const response = await fetch('http://localhost:3000/api/scan-apk', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          updateResults(data.result);
+          resultsSection.style.display = 'block';
+        } else {
+          alert(`Scan failed: ${data.message}`);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred while scanning the file.');
+      }
+    });
+
+    function updateResults(result) {
+      const statusEl = document.getElementById('status');
+      const progressEl = document.getElementById('progress');
+      const riskTextEl = document.getElementById('risk-text');
+      const metadataEl = document.getElementById('metadata');
+      const threatsEl = document.getElementById('threats');
+      const recommendationsEl = document.getElementById('recommendations');
+
+      // Clear previous results
+      threatsEl.innerHTML = '';
+      recommendationsEl.innerHTML = '';
+
+      // Update status
+      if (result.isFake || result.riskLevel === 'critical' || result.riskLevel === 'high') {
+        statusEl.textContent = '❌ SUSPICIOUS';
+        statusEl.className = 'status suspicious';
+      } else {
+        statusEl.textContent = '✅ SAFE';
+        statusEl.className = 'status safe';
+      }
+
+      // Update progress bar
+      progressEl.style.width = `${result.confidence}%`;
+      riskTextEl.textContent = `${result.confidence}% Suspicious`;
+
+      // Update metadata (you'll need to get this from the backend response)
+      metadataEl.innerHTML = `
+        <p><b>Risk Level:</b> ${result.riskLevel}</p>
+        <p><b>Is Fake:</b> ${result.isFake}</p>
+      `;
+
+      // Update threats
+      result.threats.forEach(threat => {
+        const li = document.createElement('li');
+        li.textContent = threat;
+        threatsEl.appendChild(li);
+      });
+
+      // Update recommendations
+      result.recommendations.forEach(rec => {
+        const li = document.createElement('li');
+        li.textContent = rec;
+        recommendationsEl.appendChild(li);
+      });
+    }
+  </script>
 
 </body>
 </html>
