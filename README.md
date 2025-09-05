@@ -96,7 +96,7 @@ npm start
 ### Using PM2 (Recommended for Production)
 ```bash
 npm install -g pm2
-pm2 start server.js --name cybershield
+pm2 start server.js --name cryptera
 pm2 startup
 pm2 save
 ```
@@ -267,7 +267,7 @@ CyberShield is an advanced APK security scanner designed to detect fake banking 
 1. **Clone the repository**
    ```bash
    git clone https://github.com/AnushaHardaha/APKDetector.git
-   cd cybershield
+   cd cryptera
    ```
 
 2. **Install dependencies**
@@ -328,7 +328,7 @@ npm start
 ### Using PM2 (Recommended for Production)
 ```bash
 npm install -g pm2
-pm2 start server.js --name cybershield
+pm2 start server.js --name crptera
 pm2 startup
 pm2 save
 ```
@@ -461,5 +461,4 @@ For support and questions, please open an issue on GitHub or contact the develop
 
 ---
 
-<!-- **Made at National Cryptera Hackathon 2025 🚀 | Team CyberShield** -->
->>>>>>> a7f6e2d73e08afd70cbe6949c0b5fe85fb4b02f0
+
