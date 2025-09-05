@@ -1,7 +1,7 @@
 
-# CyberShield APK Security Scanner
+# Cryptera APK Security Scanner
 
-CyberShield is an advanced APK security scanner designed to detect fake banking applications and analyze Android APK files for malicious behavior. The system provides comprehensive security analysis including permission analysis, threat intelligence, and machine learning-based detection.
+Cryptera is an advanced APK security scanner designed to detect fake banking applications and analyze Android APK files for malicious behavior. The system provides comprehensive security analysis including permission analysis, threat intelligence, and machine learning-based detection.
 
 ## Features
 
