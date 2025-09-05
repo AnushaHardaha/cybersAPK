@@ -142,20 +142,25 @@ class SecurityScanner {
     }
   }
   
-  analyzePermissions(apkInfo) {
-    if (!apkInfo.manifest || !apkInfo.manifest.permissions) {
-      return 0;
-    }
-
-    const permissions = apkInfo.manifest.permissions.map(permission => {
-      return permission.name
-    })
-    console.log("Analyzing permissions:", permissions);
-    return permissions.filter(permission =>
-      this.maliciousPermissions.has(permission)
-    ).length;
+ analyzePermissions(apkInfo) {
+  if (!apkInfo.manifest || !apkInfo.manifest.permissions) {
+    return 0;
   }
-  
+
+  // Handle both string arrays and object arrays
+  const permissions = Array.isArray(apkInfo.manifest.permissions) 
+    ? apkInfo.manifest.permissions.map(perm => {
+        if (typeof perm === 'string') return perm;
+        if (typeof perm === 'object' && perm.name) return perm.name;
+        return String(perm);
+      })
+    : [];
+
+  console.log("Analyzing permissions:", permissions);
+  return permissions.filter(permission =>
+    this.maliciousPermissions.has(permission)
+  ).length;
+}
   async analyzeStrings(apkPath, apkInfo) {
     let suspiciousCount = 0;
     let phishingCount = 0;
