@@ -35,7 +35,7 @@ Cryptera is an advanced APK security scanner designed to detect fake banking app
 1. **Clone the repository**
    ```bash
    git clone https://github.com/AnushaHardaha/APKDetector.git
-   cd cybershield
+   cd cryptera
    ```
 
 2. **Install dependencies**
