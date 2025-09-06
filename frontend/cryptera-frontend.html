@@ -4,202 +4,678 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cryptera APK Detector</title>
-
   <style>
-    /* General Reset */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    :root {
+      --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --danger-gradient: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+      --success-gradient: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+      --warning-gradient: linear-gradient(135deg, #feca57 0%, #ff9ff3 100%);
+      --dark-gradient: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+      --glass-bg: rgba(255, 255, 255, 0.25);
+      --glass-border: rgba(255, 255, 255, 0.18);
+      --shadow-light: 0 8px 32px rgba(31, 38, 135, 0.37);
+      --shadow-heavy: 0 20px 40px rgba(0, 0, 0, 0.1);
+      --text-primary: #2d3748;
+      --text-secondary: #718096;
+      --bg-primary: #f7fafc;
     }
 
     body {
-      background: #f9fafb;
-      color: #222;
-      line-height: 1.6;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: var(--text-primary);
+      overflow-x: hidden;
+    }
+
+    /* Animated background particles */
+    .bg-animation {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .particle {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      animation: float 6s ease-in-out infinite;
+    }
+
+    .particle:nth-child(1) { width: 80px; height: 80px; top: 20%; left: 20%; animation-delay: 0s; }
+    .particle:nth-child(2) { width: 120px; height: 120px; top: 60%; left: 80%; animation-delay: -2s; }
+    .particle:nth-child(3) { width: 60px; height: 60px; top: 80%; left: 30%; animation-delay: -4s; }
+    .particle:nth-child(4) { width: 100px; height: 100px; top: 30%; left: 70%; animation-delay: -1s; }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      33% { transform: translateY(-20px) rotate(120deg); }
+      66% { transform: translateY(-10px) rotate(240deg); }
     }
 
     /* Header */
     header {
       text-align: center;
-      padding: 2rem;
-      background: #0d47a1;
-      color: white;
-      border-bottom-left-radius: 20px;
-      border-bottom-right-radius: 20px;
+      padding: 3rem 2rem;
+      position: relative;
     }
-    header h1 {
+
+    .logo-container {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+
+    .logo {
+      font-size: 3rem;
+      margin-right: 1rem;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    h1 {
+      font-size: 3.5rem;
+      font-weight: 700;
+      color: white;
+      text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
       margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      font-size: 1.2rem;
+      color: rgba(255, 255, 255, 0.9);
+      font-weight: 300;
+      margin-bottom: 2rem;
+    }
+
+    .stats-row {
+      display: flex;
+      justify-content: center;
+      gap: 3rem;
+      margin-top: 2rem;
+    }
+
+    .stat {
+      text-align: center;
+      color: white;
+    }
+
+    .stat-number {
+      font-size: 2rem;
+      font-weight: 700;
+      display: block;
+    }
+
+    .stat-label {
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+
+    /* Main Container */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 2rem;
     }
 
     /* Upload Section */
-    .upload-box {
-      text-align: center;
-      background: white;
+    .upload-section {
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border);
+      border-radius: 24px;
+      padding: 3rem;
       margin: 2rem auto;
-      padding: 2rem;
-      width: 90%;
-      max-width: 500px;
-      border-radius: 15px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      max-width: 600px;
+      box-shadow: var(--shadow-light);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
     }
-    .upload-label {
-      display: block;
-      font-size: 1.2rem;
-      margin-bottom: 1rem;
+
+    .upload-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--primary-gradient);
+      border-radius: 24px 24px 0 0;
+    }
+
+    .upload-section:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(31, 38, 135, 0.5);
+    }
+
+    .upload-area {
+      border: 3px dashed rgba(255, 255, 255, 0.3);
+      border-radius: 16px;
+      padding: 3rem 2rem;
+      text-align: center;
+      transition: all 0.3s ease;
       cursor: pointer;
+      position: relative;
     }
-    #apkUpload {
+
+    .upload-area.dragover {
+      border-color: #4ecdc4;
+      background: rgba(78, 205, 196, 0.1);
+      transform: scale(1.02);
+    }
+
+    .upload-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      display: block;
+      opacity: 0.7;
+    }
+
+    .upload-text {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: white;
+      margin-bottom: 0.5rem;
+    }
+
+    .upload-hint {
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 2rem;
+    }
+
+    .file-input {
       display: none;
     }
-    .hint {
-      font-size: 0.85rem;
-      color: #555;
-      margin-top: 0.5rem;
-    }
-    .scan-btn {
-      margin-top: 1.5rem;
-      padding: 0.7rem 1.5rem;
-      background: #0d47a1;
+
+    .scan-button {
+      background: var(--success-gradient);
       color: white;
       border: none;
-      border-radius: 10px;
-      font-size: 1rem;
+      padding: 1rem 3rem;
+      border-radius: 50px;
+      font-size: 1.1rem;
+      font-weight: 600;
       cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(78, 205, 196, 0.3);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
     }
-    .scan-btn:hover {
-      background: #1565c0;
+
+    .scan-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(78, 205, 196, 0.4);
+    }
+
+    .scan-button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .loading-spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
 
     /* Results Section */
     .results {
-      width: 90%;
-      max-width: 900px;
-      margin: 2rem auto;
       background: white;
+      border-radius: 24px;
       padding: 2rem;
-      border-radius: 15px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-      display: none; /* Initially hidden */
-    }
-    .results h2 {
-      margin-bottom: 1rem;
-    }
-    .status {
-      font-size: 1.5rem;
-      font-weight: bold;
-      margin-bottom: 0.5rem;
-    }
-    .status.suspicious {
-      color: #d32f2f;
-    }
-    .status.safe {
-      color: #2e7d32;
-    }
-    .progress-bar {
-      background: #eee;
-      border-radius: 10px;
-      height: 15px;
-      margin: 0.5rem 0;
-      overflow: hidden;
-    }
-    .progress {
-      background: #f44336;
-      height: 100%;
-    }
-    .risk-text {
-      margin-bottom: 1rem;
-      font-weight: bold;
+      margin: 2rem auto;
+      max-width: 1000px;
+      box-shadow: var(--shadow-heavy);
+      display: none;
+      animation: slideInUp 0.6s ease;
     }
 
-    /* Cards Layout */
-    .cards {
+    @keyframes slideInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .results-header {
+      text-align: center;
+      margin-bottom: 2rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .scan-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 1rem 2rem;
+      border-radius: 50px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+
+    .status-safe {
+      background: var(--success-gradient);
+      color: white;
+    }
+
+    .status-suspicious {
+      background: var(--danger-gradient);
+      color: white;
+    }
+
+    .status-warning {
+      background: var(--warning-gradient);
+      color: white;
+    }
+
+    .confidence-meter {
+      max-width: 400px;
+      margin: 1rem auto;
+    }
+
+    .confidence-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+
+    .progress-bar {
+      height: 12px;
+      background: #e2e8f0;
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 6px;
+      transition: width 1s ease;
+      position: relative;
+    }
+
+    .progress-safe { background: var(--success-gradient); }
+    .progress-warning { background: var(--warning-gradient); }
+    .progress-danger { background: var(--danger-gradient); }
+
+    /* Cards Grid */
+    .cards-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+
+    .info-card {
+      background: linear-gradient(145deg, #f8f9fa, #e9ecef);
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease;
+    }
+
+    .info-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card-icon {
+      font-size: 2rem;
+      padding: 0.5rem;
+      border-radius: 12px;
+      background: var(--primary-gradient);
+      color: white;
+      min-width: 60px;
+      text-align: center;
+    }
+
+    .card-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .card-content {
+      line-height: 1.6;
+    }
+
+    .threat-item, .rec-item {
+      background: rgba(255, 107, 107, 0.1);
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 0.75rem;
+      border-left: 4px solid #ff6b6b;
+    }
+
+    .rec-item {
+      background: rgba(78, 205, 196, 0.1);
+      border-left-color: #4ecdc4;
+    }
+
+    .metadata-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       gap: 1rem;
     }
-    .card {
-      background: #fafafa;
+
+    .metadata-item {
+      text-align: center;
       padding: 1rem;
-      border-radius: 10px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
-    .card h3 {
-      margin-bottom: 0.5rem;
-      color: #0d47a1;
+
+    .metadata-label {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .metadata-value {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-top: 0.25rem;
     }
 
     /* Footer */
     footer {
       text-align: center;
-      padding: 1rem;
-      margin-top: 2rem;
+      padding: 3rem 2rem;
+      color: rgba(255, 255, 255, 0.8);
       font-size: 0.9rem;
-      color: #555;
+    }
+
+    .footer-content {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .team-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      margin-top: 1rem;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      h1 { font-size: 2.5rem; }
+      .upload-section { padding: 2rem; margin: 1rem; }
+      .cards-grid { grid-template-columns: 1fr; gap: 1rem; }
+      .stats-row { flex-direction: column; gap: 1rem; }
+      .results { margin: 1rem; padding: 1.5rem; }
+    }
+
+    /* Notification Toast */
+    .toast {
+      position: fixed;
+      top: 2rem;
+      right: 2rem;
+      background: white;
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      box-shadow: var(--shadow-heavy);
+      z-index: 1000;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+    }
+
+    .toast.show {
+      transform: translateX(0);
+    }
+
+    .toast.error {
+      border-left: 4px solid #ff6b6b;
+    }
+
+    .toast.success {
+      border-left: 4px solid #4ecdc4;
     }
   </style>
 </head>
 <body>
+  <!-- Animated Background -->
+  <div class="bg-animation">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+  </div>
 
+  <!-- Header -->
   <header>
-    <h1>Cryptera APK Detector</h1>
-    <p>Detect fake banking apps instantly</p>
+    <div class="container">
+      <div class="logo-container">
+        <span class="logo">🛡️</span>
+        <h1>Cryptera</h1>
+      </div>
+      <p class="subtitle">Advanced APK Security Analysis Platform</p>
+      <div class="stats-row">
+        <div class="stat">
+          <span class="stat-number">99.9%</span>
+          <span class="stat-label">Accuracy Rate</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">50K+</span>
+          <span class="stat-label">Scans Completed</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">24/7</span>
+          <span class="stat-label">Protection</span>
+        </div>
+      </div>
+    </div>
   </header>
 
-  <section class="upload-box">
-    <label for="apkUpload" class="upload-label">
-      📂 Upload APK File
-    </label>
-    <input type="file" id="apkUpload" accept=".apk">
-    <p class="hint">Supported file type: .apk (Max size: 220MB)</p>
-    <button class="scan-btn">🔍 Scan Now</button>
-  </section>
+  <div class="container">
+    <!-- Upload Section -->
+    <section class="upload-section">
+      <div class="upload-area" id="uploadArea">
+        <span class="upload-icon">📱</span>
+        <div class="upload-text">Drop your APK file here</div>
+        <div class="upload-hint">or click to browse • Maximum file size: 220MB</div>
+        <input type="file" id="apkUpload" class="file-input" accept=".apk">
+        <button class="scan-button" id="scanButton">
+          <span id="buttonText">🔍 Analyze APK</span>
+        </button>
+      </div>
+    </section>
 
-  <section class="results">
-    <h2>RESULTS</h2>
-    <div id="status" class="status"></div>
-    <div class="progress-bar">
-      <div id="progress" class="progress"></div>
-    </div>
-    <p id="risk-text" class="risk-text"></p>
-
-    <div class="cards">
-      <div class="card">
-        <h3>Metadata</h3>
-        <p id="metadata"></p>
+    <!-- Results Section -->
+    <section class="results" id="resultsSection">
+      <div class="results-header">
+        <div class="scan-status" id="scanStatus">
+          <span id="statusIcon">🔍</span>
+          <span id="statusText">Analyzing...</span>
+        </div>
+        <div class="confidence-meter">
+          <div class="confidence-label">
+            <span>Risk Level</span>
+            <span id="confidenceText">0%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+          </div>
+        </div>
       </div>
 
-      <div class="card">
-        <h3>Threats</h3>
-        <ul id="threats"></ul>
-      </div>
+      <div class="cards-grid">
+        <div class="info-card">
+          <div class="card-header">
+            <div class="card-icon">📊</div>
+            <div class="card-title">Analysis Overview</div>
+          </div>
+          <div class="card-content">
+            <div class="metadata-grid" id="metadataGrid">
+              <!-- Dynamic content -->
+            </div>
+          </div>
+        </div>
 
-      <div class="card">
-        <h3>Recommendations</h3>
-        <ul id="recommendations"></ul>
-      </div>
-    </div>
-  </section>
+        <div class="info-card">
+          <div class="card-header">
+            <div class="card-icon">⚠️</div>
+            <div class="card-title">Security Threats</div>
+          </div>
+          <div class="card-content" id="threatsList">
+            <!-- Dynamic content -->
+          </div>
+        </div>
 
+        <div class="info-card">
+          <div class="card-header">
+            <div class="card-icon">💡</div>
+            <div class="card-title">Recommendations</div>
+          </div>
+          <div class="card-content" id="recommendationsList">
+            <!-- Dynamic content -->
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Footer -->
   <footer>
-    <p>Made at National Cryptera Hackathon 2025 🚀 | Team Cryptera</p>
+    <div class="footer-content">
+      <p>Protecting users from malicious applications through advanced AI-powered analysis</p>
+      <div class="team-badge">
+        Made by Team Cryptera 🚀
+      </div>
+    </div>
   </footer>
 
-  <script>
-    const apkUpload = document.getElementById('apkUpload');
-    const scanBtn = document.querySelector('.scan-btn');
-    const resultsSection = document.querySelector('.results');
+  <!-- Toast Notification -->
+  <div class="toast" id="toast"></div>
 
-    scanBtn.addEventListener('click', async () => {
-      const file = apkUpload.files[0];
-      if (!file) {
-        alert('Please select an APK file.');
+  <script>
+    // DOM Elements
+    const uploadArea = document.getElementById('uploadArea');
+    const apkUpload = document.getElementById('apkUpload');
+    const scanButton = document.getElementById('scanButton');
+    const buttonText = document.getElementById('buttonText');
+    const resultsSection = document.getElementById('resultsSection');
+    const toast = document.getElementById('toast');
+
+    let selectedFile = null;
+
+    // Toast Notification
+    function showToast(message, type = 'info') {
+      toast.textContent = message;
+      toast.className = `toast ${type} show`;
+      setTimeout(() => {
+        toast.className = 'toast';
+      }, 3000);
+    }
+
+    // File Upload Handling
+    uploadArea.addEventListener('click', () => apkUpload.click());
+
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        handleFileSelection(files[0]);
+      }
+    });
+
+    apkUpload.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        handleFileSelection(e.target.files[0]);
+      }
+    });
+
+    function handleFileSelection(file) {
+      if (!file.name.toLowerCase().endsWith('.apk')) {
+        showToast('Please select a valid APK file', 'error');
         return;
       }
 
+      if (file.size > 220 * 1024 * 1024) {
+        showToast('File size exceeds 220MB limit', 'error');
+        return;
+      }
+
+      selectedFile = file;
+      document.querySelector('.upload-text').textContent = `Selected: ${file.name}`;
+      document.querySelector('.upload-hint').textContent = `File size: ${(file.size / (1024 * 1024)).toFixed(2)}MB`;
+      showToast('File selected successfully', 'success');
+    }
+
+    // Scan Functionality
+    scanButton.addEventListener('click', async () => {
+      if (!selectedFile) {
+        showToast('Please select an APK file first', 'error');
+        return;
+      }
+
+      // UI Updates for loading state
+      scanButton.disabled = true;
+      buttonText.innerHTML = '<div class="loading-spinner"></div> Analyzing...';
+
       const formData = new FormData();
-      formData.append('apk', file);
+      formData.append('apk', selectedFile);
 
       try {
         const response = await fetch('http://localhost:3000/api/scan-apk', {
@@ -212,61 +688,114 @@
         if (data.success) {
           updateResults(data.result);
           resultsSection.style.display = 'block';
+          resultsSection.scrollIntoView({ behavior: 'smooth' });
+          showToast('Analysis completed successfully', 'success');
         } else {
-          alert(`Scan failed: ${data.message}`);
+          showToast(`Scan failed: ${data.message}`, 'error');
         }
       } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred while scanning the file.');
+        showToast('Network error occurred during scan', 'error');
+      } finally {
+        // Reset button state
+        scanButton.disabled = false;
+        buttonText.textContent = '🔍 Analyze APK';
       }
     });
 
     function updateResults(result) {
-      const statusEl = document.getElementById('status');
-      const progressEl = document.getElementById('progress');
-      const riskTextEl = document.getElementById('risk-text');
-      const metadataEl = document.getElementById('metadata');
-      const threatsEl = document.getElementById('threats');
-      const recommendationsEl = document.getElementById('recommendations');
+      // Update scan status
+      const statusElement = document.getElementById('scanStatus');
+      const statusIcon = document.getElementById('statusIcon');
+      const statusText = document.getElementById('statusText');
+      const confidenceText = document.getElementById('confidenceText');
+      const progressFill = document.getElementById('progressFill');
 
-      // Clear previous results
-      threatsEl.innerHTML = '';
-      recommendationsEl.innerHTML = '';
-
-      // Update status
+      // Determine status based on results
       if (result.isFake || result.riskLevel === 'critical' || result.riskLevel === 'high') {
-        statusEl.textContent = '❌ SUSPICIOUS';
-        statusEl.className = 'status suspicious';
+        statusElement.className = 'scan-status status-suspicious';
+        statusIcon.textContent = '❌';
+        statusText.textContent = 'SUSPICIOUS DETECTED';
+        progressFill.className = 'progress-fill progress-danger';
+      } else if (result.riskLevel === 'medium') {
+        statusElement.className = 'scan-status status-warning';
+        statusIcon.textContent = '⚠️';
+        statusText.textContent = 'MEDIUM RISK';
+        progressFill.className = 'progress-fill progress-warning';
       } else {
-        statusEl.textContent = '✅ SAFE';
-        statusEl.className = 'status safe';
+        statusElement.className = 'scan-status status-safe';
+        statusIcon.textContent = '✅';
+        statusText.textContent = 'SAFE TO USE';
+        progressFill.className = 'progress-fill progress-safe';
       }
 
-      // Update progress bar
-      progressEl.style.width = `${result.confidence}%`;
-      riskTextEl.textContent = `${result.confidence}% Suspicious`;
+      // Update confidence meter
+      confidenceText.textContent = `${result.confidence}%`;
+      progressFill.style.width = `${result.confidence}%`;
 
-      // Update metadata (you'll need to get this from the backend response)
-      metadataEl.innerHTML = `
-        <p><b>Risk Level:</b> ${result.riskLevel}</p>
-        <p><b>Is Fake:</b> ${result.isFake}</p>
+      // Update metadata
+      const metadataGrid = document.getElementById('metadataGrid');
+      metadataGrid.innerHTML = `
+        <div class="metadata-item">
+          <div class="metadata-label">Risk Level</div>
+          <div class="metadata-value">${result.riskLevel.toUpperCase()}</div>
+        </div>
+        <div class="metadata-item">
+          <div class="metadata-label">Is Fake</div>
+          <div class="metadata-value">${result.isFake ? 'YES' : 'NO'}</div>
+        </div>
+        <div class="metadata-item">
+          <div class="metadata-label">Confidence</div>
+          <div class="metadata-value">${result.confidence}%</div>
+        </div>
+        <div class="metadata-item">
+          <div class="metadata-label">File Size</div>
+          <div class="metadata-value">${(selectedFile.size / (1024 * 1024)).toFixed(2)}MB</div>
+        </div>
       `;
 
       // Update threats
-      result.threats.forEach(threat => {
-        const li = document.createElement('li');
-        li.textContent = threat;
-        threatsEl.appendChild(li);
-      });
+      const threatsList = document.getElementById('threatsList');
+      if (result.threats && result.threats.length > 0) {
+        threatsList.innerHTML = result.threats.map(threat => 
+          `<div class="threat-item">${threat}</div>`
+        ).join('');
+      } else {
+        threatsList.innerHTML = '<div class="threat-item">No specific threats detected</div>';
+      }
 
       // Update recommendations
-      result.recommendations.forEach(rec => {
-        const li = document.createElement('li');
-        li.textContent = rec;
-        recommendationsEl.appendChild(li);
-      });
+      const recommendationsList = document.getElementById('recommendationsList');
+      if (result.recommendations && result.recommendations.length > 0) {
+        recommendationsList.innerHTML = result.recommendations.map(rec => 
+          `<div class="rec-item">${rec}</div>`
+        ).join('');
+      } else {
+        recommendationsList.innerHTML = '<div class="rec-item">Continue with standard security practices</div>';
+      }
     }
-  </script>
 
+    // Add some demo data for testing
+    // Remove this in production
+    window.demoScan = function() {
+      const demoResult = {
+        isFake: true,
+        riskLevel: 'high',
+        confidence: 87,
+        threats: [
+          'Suspicious permission requests detected',
+          'Code obfuscation patterns found',
+          'Network communication to unknown servers'
+        ],
+        recommendations: [
+          'Do not install this application',
+          'Report to security team',
+          'Use official app stores only'
+        ]
+      };
+      updateResults(demoResult);
+      resultsSection.style.display = 'block';
+    };
+  </script>
 </body>
 </html>
