@@ -600,3 +600,15 @@
 {"level":"info","message":"efd29981-273d-44bb-8bf4-5a69a4e237da: Checking banking app characteristics","timestamp":"2025-09-01T04:07:42.450Z"}
 {"level":"info","message":"efd29981-273d-44bb-8bf4-5a69a4e237da: Running threat intelligence checks","timestamp":"2025-09-01T04:07:42.452Z"}
 {"level":"info","message":"efd29981-273d-44bb-8bf4-5a69a4e237da: Scan completed - Risk: high, Fake: false","timestamp":"2025-09-01T04:07:44.726Z"}
+{"level":"info","message":"All services initialized successfully","timestamp":"2025-09-06T14:30:33.885Z"}
+{"level":"info","message":"APK Security Scanner running on port 3000","timestamp":"2025-09-06T14:30:33.890Z"}
+{"level":"info","message":"Environment: development","timestamp":"2025-09-06T14:30:33.891Z"}
+{"level":"info","message":"CORS allowed origins: http://localhost:3000","timestamp":"2025-09-06T14:30:33.891Z"}
+{"level":"info","message":"All services initialized successfully","timestamp":"2025-09-06T14:31:21.350Z"}
+{"level":"info","message":"APK Security Scanner running on port 3000","timestamp":"2025-09-06T14:31:21.352Z"}
+{"level":"info","message":"Environment: development","timestamp":"2025-09-06T14:31:21.353Z"}
+{"level":"info","message":"CORS allowed origins: http://localhost:3000","timestamp":"2025-09-06T14:31:21.354Z"}
+{"level":"info","message":"All services initialized successfully","timestamp":"2025-09-06T14:33:56.327Z"}
+{"level":"info","message":"APK Security Scanner running on port 3000","timestamp":"2025-09-06T14:33:56.330Z"}
+{"level":"info","message":"Environment: development","timestamp":"2025-09-06T14:33:56.330Z"}
+{"level":"info","message":"CORS allowed origins: http://localhost:3000","timestamp":"2025-09-06T14:33:56.331Z"}

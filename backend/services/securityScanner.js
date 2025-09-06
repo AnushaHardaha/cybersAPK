@@ -141,26 +141,35 @@ class SecurityScanner {
       throw new Error(`Security scan failed: ${error.message}`);
     }
   }
-  
- analyzePermissions(apkInfo) {
-  if (!apkInfo.manifest || !apkInfo.manifest.permissions) {
-    return 0;
+
+  analyzePermissions(apkInfo) {
+    if (!apkInfo.manifest || !apkInfo.manifest.permissions) {
+      console.log("No permissions found in manifest");
+      return 0;
+    }
+
+    // Handle both string arrays and object arrays
+    const permissions = Array.isArray(apkInfo.manifest.permissions) 
+      ? apkInfo.manifest.permissions.map(perm => {
+          if (typeof perm === 'string') return perm;
+          if (typeof perm === 'object' && perm.name) return perm.name;
+          if (typeof perm === 'object' && perm.$) return perm.$.name; // XML parser format
+          return String(perm);
+        }).filter(p => p && p.length > 0) // Remove empty/undefined values
+      : [];
+
+    console.log("Analyzing permissions:", permissions);
+    
+    const maliciousPerms = permissions.filter(permission =>
+      this.maliciousPermissions.has(permission)
+    );
+    
+    console.log(`Found ${maliciousPerms.length} malicious permissions:`, maliciousPerms);
+    
+    return maliciousPerms.length;
   }
 
-  // Handle both string arrays and object arrays
-  const permissions = Array.isArray(apkInfo.manifest.permissions) 
-    ? apkInfo.manifest.permissions.map(perm => {
-        if (typeof perm === 'string') return perm;
-        if (typeof perm === 'object' && perm.name) return perm.name;
-        return String(perm);
-      })
-    : [];
 
-  console.log("Analyzing permissions:", permissions);
-  return permissions.filter(permission =>
-    this.maliciousPermissions.has(permission)
-  ).length;
-}
   async analyzeStrings(apkPath, apkInfo) {
     let suspiciousCount = 0;
     let phishingCount = 0;

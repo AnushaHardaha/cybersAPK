@@ -6,14 +6,14 @@ const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('rate-limiter-flexible');
 const winston = require('winston');
-const { v4: uuidv4 } = require('uuid'); // Import uuid
-require('dotenv').config({ path: path.join(__dirname, '../.env') });
+const { v4: uuidv4 } = require('uuid');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 // Import custom modules
 const APKAnalyzer = require('./services/apkAnalyzer');
 const SecurityScanner = require('./services/securityScanner');
-const DatabaseService = require('./services/database');
 const ThreatIntelligence = require('./services/threatIntelligence');
+const DatabaseService = require('./services/database');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -42,7 +42,7 @@ const rateLimiter = new rateLimit.RateLimiterMemory({
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000', 'http://127.0.0.1:5500'],
   methods: ['GET', 'POST'],
   maxAge: 86400
 }));
@@ -77,15 +77,17 @@ const upload = multer({
 });
 
 // Initialize services
-let apkAnalyzer, securityScanner, threatIntel;
+let apkAnalyzer, securityScanner, threatIntel, database;
 
 async function initializeServices() {
   try {
     apkAnalyzer = new APKAnalyzer();
     securityScanner = new SecurityScanner();
     threatIntel = new ThreatIntelligence();
+    database = new DatabaseService();
     
     await threatIntel.initialize();
+    await database.connect();
     
     logger.info('All services initialized successfully');
   } catch (error) {
@@ -114,7 +116,11 @@ app.post('/api/scan-apk', rateLimitMiddleware, upload.single('apk'), async (req,
   
   try {
     if (!req.file) {
-      return res.status(400).json({ success: false, error: 'No APK file provided' });
+      return res.status(400).json({ 
+        success: false, 
+        error: 'No APK file provided',
+        message: 'Please select a valid APK file to scan'
+      });
     }
     
     filePath = req.file.path;
@@ -169,9 +175,16 @@ app.post('/api/scan-apk', rateLimitMiddleware, upload.single('apk'), async (req,
     scanResult.threats = riskAssessment.threats;
     scanResult.recommendations = riskAssessment.recommendations;
     
+    // Save to database
+    try {
+      await database.saveScanResult(scanResult);
+    } catch (dbError) {
+      logger.error('Failed to save scan result to database:', dbError);
+    }
+    
     logger.info(`${scanId}: Scan completed - Risk: ${scanResult.riskLevel}, Fake: ${scanResult.isFake}`);
     
-    // The response has been moved before cleanup to avoid race conditions
+    // Send response
     res.json({
       success: true,
       scanId,
@@ -188,7 +201,6 @@ app.post('/api/scan-apk', rateLimitMiddleware, upload.single('apk'), async (req,
   } catch (error) {
     logger.error(`${scanId}: Scan failed: ${error.message}`, { stack: error.stack });
     
-    // Ensure a response is only sent if one hasn't been sent already
     if (!res.headersSent) {
       return res.status(500).json({
         success: false,
@@ -198,10 +210,11 @@ app.post('/api/scan-apk', rateLimitMiddleware, upload.single('apk'), async (req,
       });
     }
   } finally {
-    // Cleanup the uploaded file in a finally block to ensure it always runs
+    // Cleanup the uploaded file
     if (filePath) {
       try {
         await fs.unlink(filePath);
+        logger.info(`Cleaned up file: ${filePath}`);
       } catch (cleanupError) {
         logger.error(`Failed to cleanup file ${filePath}:`, cleanupError);
       }
@@ -215,9 +228,39 @@ app.get('/api/health', (req, res) => {
     status: 'healthy',
     timestamp: new Date(),
     services: {
-      threatIntel: threatIntel ? 'initialized' : 'not initialized'
+      apkAnalyzer: apkAnalyzer ? 'initialized' : 'not initialized',
+      securityScanner: securityScanner ? 'initialized' : 'not initialized',
+      threatIntel: threatIntel ? 'initialized' : 'not initialized',
+      database: database ? 'initialized' : 'not initialized'
     }
   });
+});
+
+// Get scan result endpoint
+app.get('/api/scan-result/:scanId', async (req, res) => {
+  try {
+    const scanId = req.params.scanId;
+    const result = await database.getScanResult(scanId);
+    
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        error: 'Scan result not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      result: result
+    });
+    
+  } catch (error) {
+    logger.error('Failed to retrieve scan result:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve scan result'
+    });
+  }
 });
 
 // Risk calculation function
@@ -229,38 +272,62 @@ function calculateRiskLevel(scanResult) {
     let recommendations = [];
     
     // Basic APK analysis scoring
-    if (basic.isDebuggable) riskScore += 10;
-    if (basic.allowBackup) riskScore += 5;
-    if (basic.hasNativeCode) riskScore += 5;
+    if (basic) {
+      if (basic.isDebuggable) riskScore += 10;
+      if (basic.allowBackup) riskScore += 5;
+      if (basic.hasNativeCode) riskScore += 5;
+    }
     
     // Security analysis scoring
-    if (security.maliciousPermissions > 0) riskScore += security.maliciousPermissions * 15;
-    if (security.suspiciousStrings > 0) riskScore += security.suspiciousStrings * 10;
-    if (security.obfuscated) riskScore += 20;
-    if (security.packedExecutables > 0) riskScore += security.packedExecutables * 25;
+    if (security) {
+      if (security.maliciousPermissions > 0) {
+        riskScore += security.maliciousPermissions * 15;
+        detectedThreats.push(`${security.maliciousPermissions} dangerous permissions detected`);
+      }
+      if (security.suspiciousStrings > 0) {
+        riskScore += security.suspiciousStrings * 10;
+        detectedThreats.push(`${security.suspiciousStrings} suspicious code patterns found`);
+      }
+      if (security.obfuscated) {
+        riskScore += 20;
+        detectedThreats.push('Code obfuscation detected');
+      }
+      if (security.packedExecutables > 0) {
+        riskScore += security.packedExecutables * 25;
+        detectedThreats.push(`${security.packedExecutables} packed executables found`);
+      }
+    }
     
     // Banking characteristics scoring
-    if (banking.imitatesBankingApp) {
-      riskScore += 50;
-      detectedThreats.push('Banking app impersonation detected');
-    }
-    if (banking.hasPhishingIndicators) {
-      riskScore += 40;
-      detectedThreats.push('Phishing indicators found');
-    }
-    if (banking.suspiciousNetworking) {
-      riskScore += 30;
-      detectedThreats.push('Suspicious network behavior');
+    if (banking) {
+      if (banking.imitatesBankingApp) {
+        riskScore += 50;
+        detectedThreats.push('Banking app impersonation detected');
+      }
+      if (banking.hasPhishingIndicators) {
+        riskScore += 40;
+        detectedThreats.push('Phishing indicators found');
+      }
+      if (banking.suspiciousNetworking) {
+        riskScore += 30;
+        detectedThreats.push('Suspicious network behavior');
+      }
     }
     
     // Threat intelligence scoring
-    if (threats.knownMalware) {
-      riskScore += 100;
-      detectedThreats.push('Known malware signature detected');
-    }
-    if (threats.suspiciousDomains > 0) {
-      riskScore += threats.suspiciousDomains * 20;
-      detectedThreats.push('Communicates with suspicious domains');
+    if (threats) {
+      if (threats.knownMalware) {
+        riskScore += 100;
+        detectedThreats.push('Known malware signature detected');
+      }
+      if (threats.suspiciousDomains > 0) {
+        riskScore += threats.suspiciousDomains * 20;
+        detectedThreats.push('Communicates with suspicious domains');
+      }
+      if (threats.bankingTrojanMatch) {
+        riskScore += 80;
+        detectedThreats.push(`Banking trojan detected: ${threats.bankingTrojanMatch}`);
+      }
     }
     
     // ML detection scoring (if available)
@@ -297,12 +364,24 @@ function calculateRiskLevel(scanResult) {
     if (isFake) {
       recommendations.push('DO NOT INSTALL - This appears to be a fake banking application');
       recommendations.push('Report this APK to your bank and security authorities');
+    } else if (level === 'high' || level === 'medium') {
+      recommendations.push('Exercise caution - review all permissions before installation');
     }
-    if (security.maliciousPermissions > 0) {
+    
+    if (security && security.maliciousPermissions > 0) {
       recommendations.push('Review app permissions carefully before installation');
     }
-    if (banking.suspiciousNetworking) {
+    if (banking && banking.suspiciousNetworking) {
       recommendations.push('This app may transmit sensitive data to unauthorized servers');
+    }
+    
+    // Add default recommendations if none exist
+    if (recommendations.length === 0) {
+      if (level === 'minimal' || level === 'low') {
+        recommendations.push('App appears relatively safe, but always verify from official sources');
+      } else {
+        recommendations.push('Consider using official app stores for banking applications');
+      }
     }
     
     return {
@@ -310,7 +389,8 @@ function calculateRiskLevel(scanResult) {
       isFake,
       confidence: Math.round(confidence),
       threats: detectedThreats,
-      recommendations
+      recommendations,
+      riskScore: Math.round(riskScore)
     };
 }
 
@@ -330,25 +410,49 @@ app.use((error, req, res, next) => {
   if (res.headersSent) {
     return next(error);
   }
+  
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({
+        success: false,
+        error: 'File too large',
+        message: 'Maximum file size is 220MB'
+      });
+    }
+  }
+  
   res.status(500).json({
     success: false,
-    error: 'Internal server error'
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
   });
 });
 
 // Start server
 async function startServer() {
-  await initializeServices();
-  
-  app.listen(PORT, () => {
-    logger.info(`APK Security Scanner running on port ${PORT}`);
-    logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  });
+  try {
+    await initializeServices();
+    
+    app.listen(PORT, () => {
+      logger.info(`APK Security Scanner running on port ${PORT}`);
+      logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      logger.info(`CORS allowed origins: ${process.env.ALLOWED_ORIGINS || 'http://localhost:3000'}`);
+    });
+  } catch (error) {
+    logger.error('Failed to start server:', error);
+    process.exit(1);
+  }
 }
 
-startServer().catch(error => {
-  logger.error('Failed to start server:', error);
-  process.exit(1);
+// Handle graceful shutdown
+process.on('SIGINT', async () => {
+  logger.info('Received SIGINT, shutting down gracefully...');
+  if (database) {
+    await database.disconnect();
+  }
+  process.exit(0);
 });
+
+startServer();
 
 module.exports = app;

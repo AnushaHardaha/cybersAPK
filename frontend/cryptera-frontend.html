@@ -140,6 +140,7 @@
     /* Upload Section */
     .upload-section {
       background: var(--glass-bg);
+      -webkit-backdrop-filter: blur(16px);
       backdrop-filter: blur(16px);
       border: 1px solid var(--glass-border);
       border-radius: 24px;
@@ -525,7 +526,14 @@
         <span class="upload-icon">📱</span>
         <div class="upload-text">Drop your APK file here</div>
         <div class="upload-hint">or click to browse • Maximum file size: 220MB</div>
-        <input type="file" id="apkUpload" class="file-input" accept=".apk">
+        <input 
+          type="file" 
+          id="apkUpload" 
+          class="file-input" 
+          accept=".apk"
+          title="Select APK file to analyze for security threats"
+          aria-label="Upload APK file for security analysis"
+        >
         <button class="scan-button" id="scanButton">
           <span id="buttonText">🔍 Analyze APK</span>
         </button>
@@ -591,7 +599,7 @@
     <div class="footer-content">
       <p>Protecting users from malicious applications through advanced AI-powered analysis</p>
       <div class="team-badge">
-        Made by Team Cryptera 🚀
+        🚀 Built for National Cryptera Hackathon 2025 | Team Cryptera
       </div>
     </div>
   </footer>
@@ -657,9 +665,19 @@
         return;
       }
 
+      // Store file reference (don't clone it)
       selectedFile = file;
+      
       document.querySelector('.upload-text').textContent = `Selected: ${file.name}`;
       document.querySelector('.upload-hint').textContent = `File size: ${(file.size / (1024 * 1024)).toFixed(2)}MB`;
+      
+      console.log('File selected:', {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified
+      });
+      
       showToast('File selected successfully', 'success');
     }
 
@@ -681,6 +699,9 @@
         const response = await fetch('http://localhost:3000/api/scan-apk', {
           method: 'POST',
           body: formData,
+          headers: {
+            // Don't set Content-Type for FormData, browser will set it automatically
+          }
         });
 
         const data = await response.json();
@@ -795,6 +816,34 @@
       };
       updateResults(demoResult);
       resultsSection.style.display = 'block';
+    };
+
+    // Debug function to test backend connection
+    window.testBackend = async function() {
+      try {
+        console.log('Testing backend connection...');
+        const response = await fetch('http://localhost:3000/api/health');
+        const data = await response.json();
+        console.log('Backend health check result:', data);
+        showToast('Backend connection successful!', 'success');
+        return data;
+      } catch (error) {
+        console.error('Backend connection failed:', error);
+        showToast('Backend connection failed!', 'error');
+        return null;
+      }
+    };
+
+    // Test function you can call from browser console
+    window.debugFileUpload = function() {
+      console.log('Current selected file:', selectedFile);
+      console.log('File is instance of File:', selectedFile instanceof File);
+      console.log('File properties:', {
+        name: selectedFile?.name,
+        size: selectedFile?.size,
+        type: selectedFile?.type,
+        lastModified: selectedFile?.lastModified
+      });
     };
   </script>
 </body>
